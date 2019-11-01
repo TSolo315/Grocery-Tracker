@@ -1,13 +1,14 @@
 from tkinter import Tk
 import gui_initiation
-import database_management as DBM
+import database_management
 
 
 def main():
     root = Tk()
-    database_manager = DBM.DatabaseManager('example.db')
+    database_manager = database_management.DatabaseManager('example.db')
     main_gui = gui_initiation.MainGUI(root, database_manager)
     root.mainloop()
 
 
-main()
+if __name__ == '__main__':
+    main()
