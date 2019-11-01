@@ -20,6 +20,7 @@ try:
 except NameError:
   basestring = str
 
+
 class Row(object):
     def __init__(self, table, index):
         self._multicolumn_listbox = table
@@ -45,7 +46,8 @@ class Row(object):
         
     def __len__(self):
         return self._multicolumn_listbox.number_of_columns
-    
+
+
 class Column(object):
     def __init__(self, table, index):
         self._multicolumn_listbox = table
@@ -65,7 +67,8 @@ class Column(object):
         
     def __len__(self):
         return self._multicolumn_listbox.number_of_rows
-    
+
+
 class Multicolumn_Listbox(object):
     _style_index = 0
 
