@@ -21,7 +21,8 @@ class AutocompleteEntry(Entry):
     def changed(self, name, index, mode):
 
         if self.var.get() == '':
-            self.lb.destroy()
+            if hasattr(self, 'lb'):
+                self.lb.destroy()
             self.lb_up = False
         else:
             words = self.comparison()
