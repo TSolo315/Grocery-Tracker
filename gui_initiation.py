@@ -3,16 +3,22 @@ from tkinter import messagebox
 from tkinter.ttk import Combobox
 import sortable_table
 import autocomplete_entry_widget
+from datetime import datetime
 
 
 class MainGUI:
-    def __init__(self, master, database_manager):
+    def __init__(self, master, settings_manager, database_manager):
         self.master = master
         self.DBM = database_manager
         self.name_list = self.DBM.get_product_name_list()
+        self.store_list = self.DBM.get_store_list()
         self.transaction_dict = {}
+        self.today_date = datetime.today().strftime("%Y-%m-%d")
 
-        master.title("Grocery Tracker")
+        self.active_user = settings_manager.active_user
+        print(self.active_user)
+
+        master.title("Grocery Tracker: " + self.active_user)
         master.geometry("1200x800")
         main_background_color = '#4b130c'
         main_foreground_color = '#FFFAFA'
@@ -55,9 +61,14 @@ class MainGUI:
         self.store_label = Label(self.mainframe, text='Store:', bg=main_background_color, fg=main_foreground_color)
         self.store_label.grid(row=10, column=0, sticky=W, padx=(10, 0), pady=(10, 10))
         self.store_box = Combobox(self.mainframe, textvariable='transaction_store', state="readonly")
-        self.store_box['values'] = ('0.5 seconds', '1 seconds', '2 seconds', '3 seconds', '4 seconds', '5 seconds', '10 seconds', '20 seconds', '30 seconds', '60 seconds')
+        self.store_box['values'] = self.store_list
         self.store_box.current(0)
         self.store_box.grid(row=10, column=1, sticky=W, padx=0, pady=(10, 10))
+        self.date_label = Label(self.mainframe, text='Date:', bg=main_background_color, fg=main_foreground_color)
+        self.date_label.grid(row=10, column=2, sticky=W, padx=(10, 0), pady=(10, 10))
+        self.date_entry = Entry(self.mainframe)
+        self.date_entry.grid(row=10, column=3, sticky=W, padx=(0, 0), pady=(10, 10))
+        self.date_entry.insert(0, self.today_date)
         self.transaction_submit_button = Button(self.mainframe, text="Submit Transaction", command=self.submit_transaction)
         self.transaction_submit_button.grid(row=10, column=9, sticky=E, padx=(0,5), pady=(10, 10))
 
@@ -84,6 +95,12 @@ class MainGUI:
                 print(entry_name + ' does not contain a valid number!')
                 return False
         return True
+
+    def validate_date_format(self, date_text):
+        try:
+            datetime.datetime.strptime(date_text, '%Y-%m-%d')
+        except ValueError:
+            raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
     def fill_transaction_box(self, transaction_dict):
         transaction_list = []
@@ -122,7 +139,10 @@ class MainGUI:
         self.weight_entry.delete(0, END)
         self.category_box.current(0)
 
-    def submit_transaction(self,):
+    def submit_transaction(self):
+        if len(self.transaction_dict) < 1:
+            print('Empty Transaction')
+            return
         transaction_list = []
         for key, value in self.transaction_dict.items():
             group_listing = [key.lower()]
@@ -139,6 +159,7 @@ class MainGUI:
         self.DBM.save()
         self.transaction_dict.clear()
         self.name_list = self.DBM.get_product_name_list()
+        self.item_entry.lista = self.name_list
         self.transaction_box.clear()
 
 

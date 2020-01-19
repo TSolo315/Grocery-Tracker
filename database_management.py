@@ -20,6 +20,13 @@ class DatabaseManager:
         print(name_list)
         return name_list
 
+    def get_store_list(self):
+        store_list = []
+        for row in self.cursor.execute('''SELECT store_name, store_city
+                            FROM store'''):
+            store_list.append(" - ".join(row[0:2]))
+        return store_list
+
     def update_product(self, product_detail_list):
         product_name = product_detail_list[0]
         product_price = product_detail_list[1]
@@ -41,5 +48,5 @@ class DatabaseManager:
          (product_name, product_lowest_price, product_highest_price, product_average_price, product_times_purchased, product_category, product_weight_based_price)
           VALUES (?,?,?,?,?,?,?)''', (product_name, product_price, product_price, product_price, 1, product_category, product_weight))
 
-    def push_transaction(self, product_detail_list, store, date):
+    def push_transaction(self, product_detail_list, username, store, date):
         pass
