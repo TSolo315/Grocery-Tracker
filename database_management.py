@@ -75,3 +75,53 @@ class DatabaseManager:
 
     def push_new_user(self, new_username):
         self.cursor.execute('''INSERT INTO username (username_name) VALUES (?)''', (new_username,))
+
+    def push_new_store(self, name, address, address2, city, state, store_zip):
+        self.cursor.execute('''INSERT INTO store (store_name, store_address, store_address, store_city, store_state, store_zip) VALUES (?,?,?,?,?,?)''', (name, address, address2, city, state, store_zip))
+
+    def retrieve_report_query(self, user, store, item, category, date1, date2):
+        result_list = []
+        where_count = 0
+        query_text = ["""SELECT * 
+        FROM store_transaction INNER JOIN username on username.username_id = store_transaction.username_id
+        INNER JOIN store on store.store_id = store_transaction.store_id
+        INNER JOIN product on product.product_id = store_transaction.product_id"""]
+        query_values = ()
+        if user != "All Users":
+            query_text.append("WHERE username_name = ?")
+            query_values += (user,)
+            where_count += 1
+        if store != "All Stores":
+            store = store.split(" - ")
+            store_name = store[0]
+            store_city = store[1]
+            query_text.append("WHERE store_name = ?") if not where_count else query_text.append("AND store_name = ?")
+            query_text.append("AND store_city = ?")
+            query_values += (store_name, store_city)
+            where_count += 1
+        if item != "":
+            query_text.append("WHERE product_name = ?") if not where_count else query_text.append("AND product_name = ?")
+            query_values += (item,)
+            where_count += 1
+        if category != "All Categories":
+            query_text.append("WHERE product_category = ?") if not where_count else query_text.append("AND product_category = ?")
+            query_values += (category,)
+            where_count += 1
+        if date1:
+            if date2:
+                query_text.append("WHERE transaction_date >= ? AND transaction_date <= ?") if not where_count else query_text.append("AND transaction_date >= ? AND transaction_date <= ?")
+                query_values += (date1, date2)
+            else:
+                query_text.append("WHERE transaction_date >= ?") if not where_count else query_text.append("AND transaction_date >= ?")
+                query_values += (date1,)
+            where_count += 1
+        elif date2:
+            query_text.append("WHERE transaction_date <= ?") if not where_count else query_text.append("AND transaction_date <= ?")
+            query_values += (date2,)
+            where_count += 1
+        query_text = " ".join(query_text)
+        print(query_text)
+        print(query_values)
+        for row in self.cursor.execute(query_text, query_values):
+            result_list.append(row)
+        return result_list

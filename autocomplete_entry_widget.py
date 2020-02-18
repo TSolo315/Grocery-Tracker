@@ -3,10 +3,11 @@ import re
 
 
 class AutocompleteEntry(Entry):
-    def __init__(self, lista, *args, **kwargs):
+    def __init__(self, lista, master, *args, **kwargs):
 
-        Entry.__init__(self, *args, **kwargs)
+        Entry.__init__(self, master, *args, **kwargs)
         self.lista = lista
+        self.master = master
         self.var = self["textvariable"]
         if self.var == '':
             self.var = self["textvariable"] = StringVar()
@@ -28,7 +29,7 @@ class AutocompleteEntry(Entry):
             words = self.comparison()
             if words:
                 if not self.lb_up:
-                    self.lb = Listbox()
+                    self.lb = Listbox(self.master)
                     self.lb.bind("<Double-Button-1>", self.selection)
                     self.lb.bind("<Right>", self.selection)
                     self.lb.place(x=self.winfo_x(), y=self.winfo_y() + self.winfo_height())
