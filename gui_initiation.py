@@ -14,11 +14,11 @@ class MainGUI:
 
         self.transaction_dict = {}
         self.today_date = datetime.today().strftime("%Y-%m-%d")
+
         self.category_list = ["Baby Foods", "Alcoholic Beverages", "Beverages", "Breads & Bakery", "Breakfast Foods",
                               "Candy & Chocolate", "Dairy, Cheese & Eggs", "Deli & Prepared Foods", "Food & Beverage Gifts",
                               "Fresh Flowers",  "Live Indoor Plants", "Fresh Meal Kits", "Frozen Foods",
                               "Meat & Seafood", "Meat Substitutes", "Pantry Staples", "Produce", "Snack Foods", "Miscellaneous"]
-
         self.name_list = self.DBM.get_product_name_list()
         self.store_list = self.DBM.get_store_list()
         self.username_list = self.DBM.get_user_list()
@@ -75,7 +75,10 @@ class MainGUI:
         self.store_label = Label(self.mainframe, text='Store:', bg=self.main_background_color, fg=self.main_foreground_color)
         self.store_label.grid(row=10, column=0, sticky=W, padx=(20, 0), pady=(10, 10))
         self.store_box = Combobox(self.mainframe, textvariable='transaction_store', state="readonly")
-        self.store_box['values'] = self.store_list
+        if len(self.store_list):
+            self.store_box['values'] = self.store_list
+        else:
+            self.store_box['values'] = ['No Stores Added']
         self.store_box.current(0)
         self.store_box.grid(row=10, column=1, sticky=W, padx=0, pady=(10, 10))
         self.date_label = Label(self.mainframe, text='Date:', bg=self.main_background_color, fg=self.main_foreground_color)
@@ -161,6 +164,7 @@ class MainGUI:
                 self.store_list.append(store_name + " - " + store_city)
                 self.store_box['values'] = self.store_list
                 as_menu.destroy()
+                self.store_box.current(0)
                 messagebox.showinfo("Success", "New Store Added!")
 
             def close_new_store_menu():
@@ -209,6 +213,9 @@ class MainGUI:
 
         def save_settings():
             username = username_box.get()
+            if username == "Unidentified User":
+                self.error_alert("Please add a new user before saving settings.")
+                return
             background_color = background_color_box.get()
             if username != self.active_user:
                 self.SM.set_active_user(username)
@@ -237,8 +244,15 @@ class MainGUI:
         userbox_label = Label(settings_menu, text='User:')
         userbox_label.grid(row=0, column=0, sticky=W, padx=(10, 5), pady=(10, 0))
         username_box = Combobox(settings_menu, textvariable='username', state="readonly")
-        username_box['values'] = self.username_list
-        username_box.current(self.username_list.index(self.active_user))
+        if len(self.username_list):
+            username_box['values'] = self.username_list
+            try:
+                username_box.current(self.username_list.index(self.active_user))
+            except ValueError:
+                username_box.current(0)
+        else:
+            username_box['values'] = ['Unidentified User']
+            username_box.current(0)
         username_box.grid(row=0, column=1, sticky=W, padx=(0, 10), pady=(10, 10))
         background_color_label = Label(settings_menu, text='Background Color:')
         background_color_label.grid(row=1, column=0, sticky=W, padx=(10, 5), pady=(10, 10))
@@ -262,15 +276,135 @@ class MainGUI:
         def close_report_menu():
             report_menu.destroy()
 
+        def open_report_result_menu(report_data, query_summary):
+            if len(report_data) == 0:
+                self.error_alert('No transactions match your query.')
+                return
+            xx = self.master.winfo_x()
+            yy = self.master.winfo_y()
+            ddx = 60
+            ddy = 60
+            report_result_menu = Toplevel(height=400, width=400)
+            report_result_menu.transient(self.master)
+            report_result_menu.title("Report")
+            report_result_menu.update()
+            report_result_menu.geometry("+%d+%d" % (xx + ddx, yy + ddy))
+
+            report_title_label = Label(report_result_menu, text='Here is your Report:', font="Helvetica")
+            report_title_label.grid(row=0, column=0, sticky=W, padx=(20, 5), pady=(10, 5))
+
+            if not query_summary:
+                column_names = ["Username", "Store", "Item", "Price", "Quantity", "Category", "Date"]
+                report_box = sortable_table.Multicolumn_Listbox(report_result_menu, column_names, stripped_rows=("white", "#f2f2f2"), height=16, cell_anchor="center")
+                report_box.interior.column(0, width=100)
+                report_box.interior.column(1, width=100)
+                report_box.interior.column(2, width=100)
+                report_box.interior.column(3, width=100)
+                report_box.interior.column(4, width=100)
+                report_box.interior.column(5, width=100)
+                report_box.interior.grid(row=1, rowspan=8, column=0, columnspan=10, sticky=W + N + S + E, padx=20, pady=10)
+
+                item_total = 0
+                used_rows = 1
+                category_dict = {}
+                store_dict = {}
+
+                for i in self.category_list:
+                    category_dict.setdefault(i, 0)
+                for i in self.store_list:
+                    store_dict.setdefault(i.split(" - ")[0], 0)
+
+                for i in report_data:
+                    if i[8]:
+                        item_total += (i[2] * i[12]) * i[10]
+                        category_dict[i[7]] += (i[2] * i[12]) * i[10]
+                        store_dict[i[9]] += (i[2] * i[12]) * i[10]
+                    else:
+                        item_total += i[2] * i[10]
+                        category_dict[i[7]] += i[2] * i[10]
+                        store_dict[i[9]] += i[2] * i[10]
+                    report_box.insert_row([i[0], i[9], i[1], '$' + str(i[2]) + '/lb' if i[8] else '$' + str(i[2]), i[10], i[7], i[11]])
+
+                category_overview_label = Label(report_result_menu, text='Category Overview:', font="Helvetica")
+                category_overview_label.grid(row=10, column=0, sticky=W, padx=(20, 0), pady=3)
+                category_label_dict = {}
+                for category, total in category_dict.items():
+                    if total != 0:
+                        category_label_dict.setdefault('category_label' + str(used_rows), Label(report_result_menu, text=category + ": $" + str(total)))
+                        category_label_dict['category_label' + str(used_rows)].grid(row=int((used_rows / 4) + 10), column=used_rows % 4, sticky=W, padx=(20, 0), pady=3)
+                        used_rows += 1
+
+                store_overview_label = Label(report_result_menu, text='Store Overview:', font="Helvetica")
+                store_overview_label.grid(row=int((used_rows / 4) + 11), column=0, sticky=W, padx=(20, 0), pady=3)
+                store_label_dict = {}
+                store_column = 1
+                for store, total in store_dict.items():
+                    if total != 0:
+                        store_label_dict.setdefault('category_label' + str(used_rows), Label(report_result_menu, text=store + ": $" + str(total)))
+                        store_label_dict['category_label' + str(used_rows)].grid(row=int((used_rows / 4) + 11), column=store_column, sticky=W, padx=(20, 0), pady=3)
+                        used_rows += 1
+                        if store_column >= 3:
+                            store_column = 0
+                        else:
+                            store_column += 1
+
+                total_overview_label = Label(report_result_menu, text='Total Spending: $' + str(item_total), font="Helvetica")
+                total_overview_label.grid(row=int((used_rows / 4) + 12), column=0, sticky=W, padx=(20, 0), pady=3)
+
+                close_settings_button = Button(report_result_menu, text="Close", command=lambda: report_result_menu.destroy())
+                close_settings_button.grid(row=int((used_rows / 4) + 13), column=0, sticky=W, padx=(20, 0), pady=(5, 10))
+            else:
+                column_names = ["Username", "Store", "Total", "Date"]
+                report_box = sortable_table.Multicolumn_Listbox(report_result_menu, column_names, stripped_rows=("white", "#f2f2f2"), height=16, cell_anchor="center")
+                report_box.interior.column(0, width=100)
+                report_box.interior.column(1, width=100)
+                report_box.interior.column(2, width=100)
+                report_box.interior.column(3, width=100)
+                report_box.interior.grid(row=1, rowspan=8, column=0, columnspan=4, sticky=W + N + S + E, padx=20, pady=10)
+
+                item_total = 0
+                used_rows = 1
+                store_dict = {}
+
+                for i in self.store_list:
+                    store_dict.setdefault(i.split(" - ")[0], 0)
+
+                for i in report_data:
+                    item_total += i[3]
+                    store_dict[i[1]] += i[3]
+                    report_box.insert_row([i[0], i[1], '$' + str(i[3]), i[2]])
+
+                store_overview_label = Label(report_result_menu, text='Store Overview:', font="Helvetica")
+                store_overview_label.grid(row=10, column=0, sticky=W, padx=(20, 0), pady=3)
+                store_label_dict = {}
+                for category, total in store_dict.items():
+                    if total != 0:
+                        store_label_dict.setdefault('store_label' + str(used_rows), Label(report_result_menu, text=category + ": $" + str(total)))
+                        store_label_dict['store_label' + str(used_rows)].grid(row=int((used_rows / 3) + 10), column=used_rows % 3, sticky=W, padx=(20, 0), pady=3)
+                        used_rows += 1
+
+                total_overview_label = Label(report_result_menu, text='Total Spending: $' + str(item_total), font="Helvetica")
+                total_overview_label.grid(row=int((used_rows / 3) + 11), column=0, sticky=W, padx=(20, 0), pady=3)
+
+                close_settings_button = Button(report_result_menu, text="Close", command=lambda: report_result_menu.destroy())
+                close_settings_button.grid(row=int((used_rows / 3) + 12), column=0, sticky=W, padx=(20, 0), pady=(5, 10))
+
         def submit_query():
             query_user = report_username_box.get()
             query_store = report_store_box.get()
             query_item = report_item_entry.get()
+            if query_item and query_item not in self.name_list:
+                self.error_alert('Item not found, please double check spelling.')
+                return
             query_category = report_category_box.get()
             query_date1 = report_date_entry1.get()
+            if query_date1 and not self.validate_date_format(query_date1):
+                return
             query_date2 = report_date_entry2.get()
-            report_data = self.DBM.retrieve_report_query(query_user, query_store, query_item, query_category, query_date1, query_date2)
-            print(report_data)
+            if query_date2 and not self.validate_date_format(query_date2):
+                return
+            query_summary = summary_report_var.get()
+            open_report_result_menu(self.DBM.retrieve_report_query(query_user, query_store, query_item, query_category, query_date1, query_date2, query_summary), query_summary)
 
         x = self.master.winfo_x()
         y = self.master.winfo_y()
@@ -288,17 +422,17 @@ class MainGUI:
         report_category_list = ["All Categories"] + self.category_list.copy()
 
         report_userbox_label = Label(report_menu, text='User:')
-        report_userbox_label.grid(row=0, column=0, sticky=W, padx=(10, 5), pady=(10, 10))
+        report_userbox_label.grid(row=0, column=0, sticky=W, padx=(10, 5), pady=(15, 10))
         report_username_box = Combobox(report_menu, textvariable='username', state="readonly", width=22)
         report_username_box['values'] = report_username_list
         report_username_box.current(self.username_list.index(self.active_user))
-        report_username_box.grid(row=0, column=1, sticky=W, padx=(0, 10), pady=(10, 10))
+        report_username_box.grid(row=0, column=1, sticky=W, padx=(0, 10), pady=(15, 10))
         report_storebox_label = Label(report_menu, text='Store:')
-        report_storebox_label.grid(row=0, column=2, sticky=W, padx=(5, 5), pady=(10, 10))
+        report_storebox_label.grid(row=0, column=2, sticky=W, padx=(5, 5), pady=(15, 10))
         report_store_box = Combobox(report_menu, textvariable='storename', state="readonly", width=22)
         report_store_box['values'] = report_store_list
         report_store_box.current(0)
-        report_store_box.grid(row=0, column=3, sticky=W, padx=(0, 10), pady=(10, 10))
+        report_store_box.grid(row=0, column=3, sticky=W, padx=(0, 10), pady=(15, 10))
         report_item_label = Label(report_menu, text='Item:')
         report_item_label.grid(row=1, column=0, sticky=W, padx=(10, 5), pady=(10, 10))
         report_item_entry = autocomplete_entry_widget.AutocompleteEntry(self.name_list, report_menu, width=25)
@@ -325,30 +459,35 @@ class MainGUI:
         report_button_frame = Frame(report_menu)
         report_button_frame.grid(row=4, column=0, columnspan=4, sticky=W + E, padx=0, pady=0)
         submit_query_button = Button(report_button_frame, text="Get Report", command=submit_query)
-        submit_query_button.grid(row=0, column=0, sticky=W, padx=(5, 5), pady=(5, 10))
+        submit_query_button.grid(row=0, column=0, sticky=W, padx=(10, 5), pady=(5, 10))
         close_report_button = Button(report_button_frame, text="Close", command=close_report_menu)
         close_report_button.grid(row=0, column=1, sticky=W, padx=(5, 10), pady=(5, 10))
+
+    def error_alert(self, message):
+        messagebox.showinfo("Error", message)
 
     def valid_number_test(self, source_input, is_float=True, entry_name='Entry'):
         if is_float:
             try:
                 testvar = float(source_input)
             except ValueError:
-                print(entry_name + ' does not contain a valid number!')
+                self.error_alert(entry_name + ' does not contain a valid number!')
                 return False
         else:
             try:
                 testvar = int(source_input)
             except ValueError:
-                print(entry_name + ' does not contain a valid number!')
+                self.error_alert(entry_name + ' does not contain a valid number!')
                 return False
         return True
 
     def validate_date_format(self, date_text):
         try:
-            datetime.datetime.strptime(date_text, '%Y-%m-%d')
+            datetime.strptime(date_text, '%Y-%m-%d')
+            return True
         except ValueError:
-            raise ValueError("Incorrect data format, should be YYYY-MM-DD")
+            self.error_alert("Incorrect date format, should be YYYY-MM-DD")
+            return False
 
     def fill_transaction_box(self, transaction_dict):
         transaction_list = []
@@ -360,8 +499,11 @@ class MainGUI:
             self.transaction_box.insert_row([i[0], i[1], i[2], i[3]])
 
     def submit_item_entry(self):
-        item_name = self.item_entry.get()
-        item_price = self.price_entry.get()
+        item_name = self.item_entry.get().lower()
+        if not item_name:
+            self.error_alert('Please insert an item name.')
+            return
+        item_price = self.price_entry.get().replace("$", "")
         if not self.valid_number_test(item_price, entry_name='Price entry'):
             return
         item_quantity = self.quantity_entry.get()
@@ -389,10 +531,15 @@ class MainGUI:
 
     def submit_transaction(self):
         if len(self.transaction_dict) < 1:
-            print('Empty Transaction')
+            self.error_alert('Empty Transaction')
             return
-        store = self.store_box.get()  # Add idiot tests.
+        store = self.store_box.get()
+        if store == "No Stores Added":
+            self.error_alert("Please add a store in the settings menu before submitting a transaction.")
+            return
         date = self.date_entry.get()
+        if not self.validate_date_format(date):
+            return
         transaction_list = []
         transaction_total = 0
         for key, value in self.transaction_dict.items():
