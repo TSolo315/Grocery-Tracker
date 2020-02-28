@@ -15,11 +15,15 @@ class MainGUI:
         self.transaction_dict = {}
         self.today_date = datetime.today().strftime("%Y-%m-%d")
 
-        self.category_list = ["Baby Foods", "Alcoholic Beverages", "Beverages", "Breads & Bakery", "Breakfast Foods",
-                              "Candy & Chocolate", "Dairy, Cheese & Eggs", "Deli & Prepared Foods", "Food & Beverage Gifts",
-                              "Fresh Flowers",  "Live Indoor Plants", "Fresh Meal Kits", "Frozen Foods",
-                              "Meat & Seafood", "Meat Substitutes", "Pantry Staples", "Produce", "Snack Foods", "Miscellaneous"]
-        self.name_list = self.DBM.get_product_name_list()
+        self.category_list = ["Alcoholic Beverages", "Baby Foods", "Beverages", "Breads & Bakery", "Breakfast Foods",
+                              "Candy & Chocolate", "Dairy, Cheese & Eggs", "Deli & Prepared Foods", "Dessert", "Food & Beverage Gifts",
+                              "Fresh Flowers", "Frozen Foods", "Meat & Seafood", "Meat Substitutes", "Pantry Staples", "Produce", "Snack Foods",
+                              "Arts & Crafts", "Automotive", "Beauty", "Clothing & Accessories", "Electronics", "Health", "Home", "Home Improvement",
+                              "Office", "Outdoors", "Personal Care", "Pets", "Sports", "Toys", "Video Games", "Miscellaneous"]
+        self.name_list = []
+        self.name_dict = self.DBM.get_product_name_list()
+        for i in self.name_dict:
+            self.name_list.append(i)
         self.store_list = self.DBM.get_store_list()
         self.username_list = self.DBM.get_user_list()
 
@@ -36,13 +40,14 @@ class MainGUI:
         self.top_button_frame = Frame(self.mainframe, bg=self.main_background_color)
         self.top_button_frame.grid(row=0, column=0, rowspan=2, columnspan=12, sticky=W + E + N + S, padx=0, pady=0)
         self.settings_button = Button(self.top_button_frame, text="Settings", font="helvetica", command=self.open_settings_menu)
-        self.settings_button.grid(row=0, column=0, columnspan=2, sticky=W, padx=(20, 5), pady=(10, 0))
+        self.settings_button.grid(row=0, column=0, columnspan=2, sticky=W, padx=(20, 5), pady=(20, 0))
         self.report_button = Button(self.top_button_frame, text="Get Report", font="helvetica", command=self.open_report_menu)
-        self.report_button.grid(row=0, column=2, columnspan=2, sticky=W, padx=(10, 10), pady=(10, 0))
+        self.report_button.grid(row=0, column=2, columnspan=2, sticky=W, padx=(10, 10), pady=(20, 0))
         self.item_label = Label(self.mainframe, text='Item:', bg=self.main_background_color, fg=self.main_foreground_color)
         self.item_label.grid(row=1, column=0, sticky=W, padx=(20, 0), pady=(5, 5))
         self.item_entry = autocomplete_entry_widget.AutocompleteEntry(self.name_list, self.mainframe)
         self.item_entry.grid(row=1, column=1, sticky=W, padx=(0, 0), pady=(5, 5))
+        self.item_entry.bind('<FocusOut>', self.set_item_category)
         self.price_label = Label(self.mainframe, text='Price:', bg=self.main_background_color, fg=self.main_foreground_color)
         self.price_label.grid(row=1, column=2, sticky=W, padx=(0, 0), pady=(5, 5))
         self.price_entry = Entry(self.mainframe)
@@ -80,14 +85,14 @@ class MainGUI:
         else:
             self.store_box['values'] = ['No Stores Added']
         self.store_box.current(0)
-        self.store_box.grid(row=10, column=1, sticky=W, padx=0, pady=(10, 10))
+        self.store_box.grid(row=10, column=1, sticky=W, padx=0, pady=(10, 20))
         self.date_label = Label(self.mainframe, text='Date:', bg=self.main_background_color, fg=self.main_foreground_color)
-        self.date_label.grid(row=10, column=2, sticky=W, padx=(10, 0), pady=(10, 10))
+        self.date_label.grid(row=10, column=2, sticky=W, padx=(10, 0), pady=(10, 20))
         self.date_entry = Entry(self.mainframe)
-        self.date_entry.grid(row=10, column=3, sticky=W, padx=(0, 0), pady=(10, 10))
+        self.date_entry.grid(row=10, column=3, sticky=W, padx=(0, 0), pady=(10, 20))
         self.date_entry.insert(0, self.today_date)
         self.transaction_submit_button = Button(self.mainframe, text="Submit Transaction", command=self.submit_transaction)
-        self.transaction_submit_button.grid(row=10, column=9, sticky=E, padx=(0, 5), pady=(10, 10))
+        self.transaction_submit_button.grid(row=10, column=9, sticky=E, padx=(0, 5), pady=(10, 20))
 
         for i in range(0, 12):
             master.grid_columnconfigure(i, weight=1)
@@ -96,7 +101,21 @@ class MainGUI:
             master.grid_rowconfigure(i, weight=1)
             self.mainframe.grid_rowconfigure(i, weight=1)
 
+        try:
+            self.master.iconbitmap('GTicon.ico')
+        except TclError:
+            pass
+
         master.update()
+        if not len(self.name_list) and self.active_user == "Unidentified User":
+            self.master.after(1000, self.new_user_alert)
+
+    def new_user_alert(self):
+        messagebox.showinfo("Hello!", "It looks like this might be your first time here. Please start by going into the settings menu and adding a new user and new store.")
+
+    def set_item_category(self, event):
+        if self.item_entry.get() in self.name_dict:
+            self.category_box.current(self.category_list.index(self.name_dict[self.item_entry.get()][0]))
 
     def change_background_color(self, color):
         self.mainframe.config(bg=color)
@@ -116,13 +135,17 @@ class MainGUI:
             def add_new_user():
                 new_username = username_entry.get()
                 if not new_username:
-                    return  # Error Message?
+                    self.error_alert("Username is already taken.")
+                    return
                 self.DBM.push_new_user(new_username)
                 self.DBM.save()
                 self.username_list.append(new_username)
                 if username_box:
                     username_box['values'] = self.username_list
                     username_box.current(len(self.username_list) - 1)
+                self.SM.set_active_user(new_username)
+                self.active_user = self.SM.active_user
+                self.master.title("Grocery Tracker: " + self.active_user)
                 au_menu.destroy()
 
             def close_new_user_menu():
@@ -153,12 +176,26 @@ class MainGUI:
 
             def add_new_store():
                 store_name = store_name_entry.get()
+                if not store_name:
+                    self.error_alert("Please enter a store name.")
+                    return
                 store_address = store_address_entry.get()
+                if not store_address:
+                    self.error_alert("Please enter a store address.")
+                    return
                 store_address2 = store_address_entry2.get()
                 store_city = store_city_entry.get()
+                if not store_city:
+                    self.error_alert("Please enter a city.")
+                    return
                 store_state = store_state_entry.get()
+                if not store_state:
+                    self.error_alert("Please enter a state.")
+                    return
                 store_zip = store_zip_entry.get()
-                # add idiot test
+                if not store_zip:
+                    self.error_alert("Please enter a zip code.")
+                    return
                 self.DBM.push_new_store(store_name, store_address, store_address2, store_city, store_state, store_zip)
                 self.DBM.save()
                 self.store_list.append(store_name + " - " + store_city)
@@ -276,7 +313,9 @@ class MainGUI:
         def close_report_menu():
             report_menu.destroy()
 
-        def open_report_result_menu(report_data, query_summary):
+        def open_report_result_menu(report_data, query_summary, item_search):
+            """report_data_indexes: 0:username_name, 1:product_name, 2:transaction_price, 3:product_lowest_price, 4:product_average_price, 5:product_highest_price, 6:product_times_purchased,
+             7:product_category, 8:product_weight_based_price, 9:store_name, 10:transaction_quantity, 11:transaction_date, 12:transaction_weight"""
             if len(report_data) == 0:
                 self.error_alert('No transactions match your query.')
                 return
@@ -296,12 +335,13 @@ class MainGUI:
             if not query_summary:
                 column_names = ["Username", "Store", "Item", "Price", "Quantity", "Category", "Date"]
                 report_box = sortable_table.Multicolumn_Listbox(report_result_menu, column_names, stripped_rows=("white", "#f2f2f2"), height=16, cell_anchor="center")
-                report_box.interior.column(0, width=100)
-                report_box.interior.column(1, width=100)
-                report_box.interior.column(2, width=100)
+                report_box.interior.column(0, width=125)
+                report_box.interior.column(1, width=175)
+                report_box.interior.column(2, width=275)
                 report_box.interior.column(3, width=100)
-                report_box.interior.column(4, width=100)
-                report_box.interior.column(5, width=100)
+                report_box.interior.column(4, width=65)
+                report_box.interior.column(5, width=150)
+                report_box.interior.column(6, width=100)
                 report_box.interior.grid(row=1, rowspan=8, column=0, columnspan=10, sticky=W + N + S + E, padx=20, pady=10)
 
                 item_total = 0
@@ -316,9 +356,13 @@ class MainGUI:
 
                 for i in report_data:
                     if i[8]:
-                        item_total += (i[2] * i[12]) * i[10]
-                        category_dict[i[7]] += (i[2] * i[12]) * i[10]
-                        store_dict[i[9]] += (i[2] * i[12]) * i[10]
+                        if not i[12]:
+                            product_weight = 1
+                        else:
+                            product_weight = i[12]
+                        item_total += (i[2] * product_weight) * i[10]
+                        category_dict[i[7]] += (i[2] * product_weight) * i[10]
+                        store_dict[i[9]] += (i[2] * product_weight) * i[10]
                     else:
                         item_total += i[2] * i[10]
                         category_dict[i[7]] += i[2] * i[10]
@@ -351,13 +395,24 @@ class MainGUI:
                 total_overview_label = Label(report_result_menu, text='Total Spending: $' + str(item_total), font="Helvetica")
                 total_overview_label.grid(row=int((used_rows / 4) + 12), column=0, sticky=W, padx=(20, 0), pady=3)
 
-                close_settings_button = Button(report_result_menu, text="Close", command=lambda: report_result_menu.destroy())
-                close_settings_button.grid(row=int((used_rows / 4) + 13), column=0, sticky=W, padx=(20, 0), pady=(5, 10))
+                if item_search:
+                    item_highest_label = Label(report_result_menu, text='Item Highest Price: $' + str(report_data[0][5]) + '/lb' if report_data[0][8] else 'Item Highest Price: $' + str(report_data[0][5]), font="Helvetica")
+                    item_highest_label.grid(row=int((used_rows / 4) + 13), column=0, sticky=W, padx=(20, 0), pady=3)
+                    item_average_label = Label(report_result_menu, text='Item Average Price: $' + str(report_data[0][4]) + '/lb' if report_data[0][8] else 'Item Highest Price: $' + str(report_data[0][4]), font="Helvetica")
+                    item_average_label.grid(row=int((used_rows / 4) + 14), column=0, sticky=W, padx=(20, 0), pady=3)
+                    item_lowest_label = Label(report_result_menu, text='Item Lowest Price: $' + str(report_data[0][3]) + '/lb' if report_data[0][8] else 'Item Highest Price: $' + str(report_data[0][3]), font="Helvetica")
+                    item_lowest_label.grid(row=int((used_rows / 4) + 15), column=0, sticky=W, padx=(20, 0), pady=3)
+                    close_settings_button = Button(report_result_menu, text="Close", command=lambda: report_result_menu.destroy())
+                    close_settings_button.grid(row=int((used_rows / 4) + 16), column=0, sticky=W, padx=(20, 0), pady=(5, 10))
+
+                else:
+                    close_settings_button = Button(report_result_menu, text="Close", command=lambda: report_result_menu.destroy())
+                    close_settings_button.grid(row=int((used_rows / 4) + 13), column=0, sticky=W, padx=(20, 0), pady=(5, 10))
             else:
                 column_names = ["Username", "Store", "Total", "Date"]
                 report_box = sortable_table.Multicolumn_Listbox(report_result_menu, column_names, stripped_rows=("white", "#f2f2f2"), height=16, cell_anchor="center")
                 report_box.interior.column(0, width=100)
-                report_box.interior.column(1, width=100)
+                report_box.interior.column(1, width=200)
                 report_box.interior.column(2, width=100)
                 report_box.interior.column(3, width=100)
                 report_box.interior.grid(row=1, rowspan=8, column=0, columnspan=4, sticky=W + N + S + E, padx=20, pady=10)
@@ -390,12 +445,15 @@ class MainGUI:
                 close_settings_button.grid(row=int((used_rows / 3) + 12), column=0, sticky=W, padx=(20, 0), pady=(5, 10))
 
         def submit_query():
+            item_search = False
             query_user = report_username_box.get()
             query_store = report_store_box.get()
             query_item = report_item_entry.get()
-            if query_item and query_item not in self.name_list:
-                self.error_alert('Item not found, please double check spelling.')
-                return
+            if query_item:
+                item_search = True
+                if query_item not in self.name_list:
+                    self.error_alert('Item not found, please double check spelling.')
+                    return
             query_category = report_category_box.get()
             query_date1 = report_date_entry1.get()
             if query_date1 and not self.validate_date_format(query_date1):
@@ -404,7 +462,7 @@ class MainGUI:
             if query_date2 and not self.validate_date_format(query_date2):
                 return
             query_summary = summary_report_var.get()
-            open_report_result_menu(self.DBM.retrieve_report_query(query_user, query_store, query_item, query_category, query_date1, query_date2, query_summary), query_summary)
+            open_report_result_menu(self.DBM.retrieve_report_query(query_user, query_store, query_item, query_category, query_date1, query_date2, query_summary), query_summary, item_search)
 
         x = self.master.winfo_x()
         y = self.master.winfo_y()
@@ -454,10 +512,24 @@ class MainGUI:
         report_check_frame = Frame(report_menu)
         report_check_frame.grid(row=3, column=0, columnspan=4, sticky=W + E, padx=0, pady=0)
         summary_report_var = IntVar()
-        summary_report_check = Checkbutton(report_check_frame, text="Transaction Total Report", variable=summary_report_var)
-        summary_report_check.grid(row=3, column=0, sticky=W, padx=(10, 5), pady=(5, 5))
+        summary_report_check = Checkbutton(report_check_frame, text="Transaction Summary Report", variable=summary_report_var)
+        summary_report_check.grid(row=3, column=0, sticky=W, padx=(10, 5), pady=5)
+        report_instruction_frame = Frame(report_menu)
+        report_instruction_frame.grid(row=4, column=0, columnspan=4, sticky=W + E, padx=0, pady=(3, 0))
+        report_instruction_label = Label(report_instruction_frame, text='Instructions:', font=("Helvetica", 18))
+        report_instruction_label.grid(row=0, column=0, sticky=W, padx=(10, 5), pady=0)
+        report_instruction_label2 = Label(report_instruction_frame, text='• Form a query using the fields above.', font=("Helvetica", 11))
+        report_instruction_label2.grid(row=1, column=0, sticky=W, padx=(18, 5), pady=5)
+        report_instruction_label3 = Label(report_instruction_frame, text='• Leave unnecessary fields blank.', font=("Helvetica", 11))
+        report_instruction_label3.grid(row=2, column=0, sticky=W, padx=(18, 5), pady=5)
+        report_instruction_label3 = Label(report_instruction_frame, text='• Use date format YYYY-MM-DD.', font=("Helvetica", 11))
+        report_instruction_label3.grid(row=3, column=0, sticky=W, padx=(18, 5), pady=5)
+        report_instruction_label4 = Label(report_instruction_frame, text='• You can enter only one date.', font=("Helvetica", 11))
+        report_instruction_label4.grid(row=4, column=0, sticky=W, padx=(18, 5), pady=5)
+        report_instruction_label5 = Label(report_instruction_frame, text='• Transaction Summary Reports only show transaction totals.', font=("Helvetica", 11))
+        report_instruction_label5.grid(row=5, column=0, sticky=W, padx=(18, 5), pady=5)
         report_button_frame = Frame(report_menu)
-        report_button_frame.grid(row=4, column=0, columnspan=4, sticky=W + E, padx=0, pady=0)
+        report_button_frame.grid(row=5, column=0, columnspan=4, sticky=W + E, padx=0, pady=(3, 0))
         submit_query_button = Button(report_button_frame, text="Get Report", command=submit_query)
         submit_query_button.grid(row=0, column=0, sticky=W, padx=(10, 5), pady=(5, 10))
         close_report_button = Button(report_button_frame, text="Close", command=close_report_menu)
@@ -519,6 +591,11 @@ class MainGUI:
             item_price = "$" + item_price
             weight_based_price = False
         item_category = self.category_box.get()
+        if item_name in self.name_dict:
+            if not item_weight or item_weight == '0':
+                if self.name_dict[item_name][1]:
+                    self.error_alert('Please set a weight for this item as you have done previously.')
+                    return
         self.transaction_box.clear()
         self.transaction_dict.setdefault(item_name, [item_price, item_quantity, item_category, weight_based_price, item_weight])
         self.fill_transaction_box(self.transaction_dict)
@@ -539,6 +616,9 @@ class MainGUI:
             return
         date = self.date_entry.get()
         if not self.validate_date_format(date):
+            return
+        if self.active_user == "Unidentified User":
+            self.error_alert("Please add a new user in the settings menu before submitting a transaction.")
             return
         transaction_list = []
         transaction_total = 0

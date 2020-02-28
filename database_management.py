@@ -77,11 +77,11 @@ class DatabaseManager:
         self.conn.close()
 
     def get_product_name_list(self):
-        name_list = []
-        for row in self.cursor.execute('''SELECT product_name
+        name_dict = {}
+        for row in self.cursor.execute('''SELECT product_name, product_category, product_weight_based_price
                             FROM product'''):
-            name_list.append(row[0])
-        return name_list
+            name_dict.setdefault(row[0], [row[1], row[2]])
+        return name_dict
 
     def get_store_list(self):
         store_list = []
