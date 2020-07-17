@@ -3,11 +3,14 @@ import re
 
 
 class AutocompleteEntry(Entry):
-    def __init__(self, lista, master, *args, **kwargs):
+    def __init__(self, lista, master, name_dict=0, cat_list=0, cat_box=0, *args, **kwargs):
 
         Entry.__init__(self, master, *args, **kwargs)
         self.lista = lista
         self.master = master
+        self.name_dict = name_dict
+        self.cat_list = cat_list
+        self.cat_box = cat_box
         self.var = self["textvariable"]
         if self.var == '':
             self.var = self["textvariable"] = StringVar()
@@ -44,10 +47,16 @@ class AutocompleteEntry(Entry):
                     self.lb.destroy()
                     self.lb_up = False
 
+    def set_item_category(self, active):
+        if active in self.name_dict:
+            self.cat_box.current(self.cat_list.index(self.name_dict[active][0]))
+
     def selection(self, event):
 
         if self.lb_up:
             self.var.set(self.lb.get(ACTIVE))
+            if self.cat_box:
+                self.set_item_category(self.lb.get(ACTIVE))
             self.lb.destroy()
             self.lb_up = False
             self.icursor(END)
@@ -79,5 +88,5 @@ class AutocompleteEntry(Entry):
                 self.lb.activate(index)
 
     def comparison(self):
-        pattern = re.compile('.*' + self.var.get() + '.*')
+        pattern = re.compile('.*' + self.var.get().lower() + '.*')
         return [w for w in self.lista if re.match(pattern, w)]

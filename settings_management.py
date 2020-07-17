@@ -12,7 +12,10 @@ class SettingsManager:
             self.config.set('main', 'backgroundcolor', 'Red')
             with open(self.setting_file, 'w') as f:
                 self.config.write(f)
-        self.color_dict = {'Red': '#d63031', 'Blue': '#0984e3', 'Green': '#00b894', 'Black': '#2d3436', 'Grey': '#636e72', 'Orange': '#e17055', 'Pink': '#fd79a8', 'Purple': '#6c5ce7', 'Cyan': '#00cec9'}
+        self.color_dict = {
+            'Red': '#d63031', 'Blue': '#0984e3', 'Green': '#00b894', 'Black': '#2d3436',
+            'Grey': '#636e72', 'Orange': '#e17055', 'Pink': '#fd79a8', 'Purple': '#6c5ce7',
+            'Cyan': '#00cec9'}
         self.active_user = self.config.get('main', 'activeuser')
         self.background_color = self.config.get('main', 'backgroundcolor')
 
